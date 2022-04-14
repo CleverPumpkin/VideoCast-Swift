@@ -9,6 +9,7 @@
 import UIKit
 import GLKit
 import Metal
+import AVFoundation
 
 open class VCPreviewView: UIView {
     private var currentBuffer = 1
@@ -38,6 +39,7 @@ open class VCPreviewView: UIView {
     private var layerSizeDidUpdate = false
 
     public var flipX = false
+	public var videoGravity: AVLayerVideoGravity = .resizeAspectFill
 
     final public override class var layerClass: AnyClass {
         #if targetEnvironment(simulator)
@@ -170,7 +172,7 @@ open class VCPreviewView: UIView {
                 var wfac = Float(strongSelf.bounds.size.width) / width
                 var hfac = Float(strongSelf.bounds.size.height) / height
 
-                let aspectFit = true
+				let aspectFit = strongSelf.videoGravity == .resizeAspect
 
                 let mult = (aspectFit ? (wfac < hfac) : (wfac > hfac)) ? wfac : hfac
 

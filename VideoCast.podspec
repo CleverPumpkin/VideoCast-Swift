@@ -1,11 +1,11 @@
 Pod::Spec.new do |s|
-  s.name      = 'VideoCast'
-  s.version   = '0.1.5'
+  s.name      = 'CPVideoCast'
+  s.version   = '0.1.6'
   s.license   = { :type => "MIT", :file => "LICENSE" }
   s.summary   = 'A framework for broadcasting live video'
-  s.homepage  = 'https://github.com/openfresh/VideoCast-Swift'
+  s.homepage  = 'https://github.com/CleverPumpkin/VideoCast-Swift'
   s.authors   = { 'Tomohiro Matsuzawa' => 'thmatuza75@hotmail.com' }
-  s.source    = { :git => 'https://github.com/openfresh/VideoCast-Swift.git', :tag => s.version }
+  s.source    = { :git => 'https://github.com/CleverPumpkin/VideoCast-Swift.git', :tag => s.version }
 
   s.ios.deployment_target = '8.0'
 
