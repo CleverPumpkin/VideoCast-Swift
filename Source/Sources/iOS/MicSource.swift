@@ -125,7 +125,7 @@ open class MicSource: ISource {
 
                 var acd = AudioComponentDescription(
                     componentType: kAudioUnitType_Output,
-                    componentSubType: kAudioUnitSubType_RemoteIO,
+                    componentSubType: kAudioUnitSubType_VoiceProcessingIO,
                     componentManufacturer: kAudioUnitManufacturer_Apple,
                     componentFlags: 0,
                     componentFlagsMask: 0)
