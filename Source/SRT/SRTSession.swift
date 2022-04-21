@@ -38,7 +38,7 @@ open class SRTSession: IOutputSession {
     private let callback: SRTSessionStateCallback
 
     private var loglevel: SRTLogLevel = .err
-    private var logfa: SRTLogFAs = .general
+    private var logfa: SRTLogFAs = SRTLogFAs(.general)
     private var logfile: String = ""
     private var internal_log: Bool = false
     private var autoreconnect: Bool = true

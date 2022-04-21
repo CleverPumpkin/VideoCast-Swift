@@ -146,7 +146,7 @@ class SrtCommon {
     }
 
     func prepareListener(_ host: String, port: Int, backlog: Int32) throws {
-        bindsock = srt_socket(AF_INET, SOCK_DGRAM, 0)
+        bindsock = srt_create_socket()
         if bindsock == SRT_ERROR {
             try error(udtGetLastError(), src: "srt_socket")
         }
@@ -326,7 +326,7 @@ class SrtCommon {
     }
 
     func prepareClient() throws {
-        sock = srt_socket(AF_INET, SOCK_DGRAM, 0)
+        sock = srt_create_socket()
         if sock == SRT_ERROR {
             try error(udtGetLastError(), src: "srt_socket")
         }
@@ -374,9 +374,9 @@ class SrtCommon {
     }
 
     func openRendezvous(_ adapter: String, host: String, port: Int) throws {
-        sock = srt_socket(AF_INET, SOCK_DGRAM, 0)
+        sock = srt_create_socket()
         if sock == SRT_ERROR {
-            try error(udtGetLastError(), src: "srt_socket")
+            try error(udtGetLastError(), src: "srt_create_socket")
         }
         registerEpoll()
 

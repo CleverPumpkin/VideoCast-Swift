@@ -13,14 +13,11 @@ extern "C" {
     UdtErrorInfo udtGetLastError() {
         UdtErrorInfo errorInfo;
         
-        UDT::ERRORINFO udtError = UDT::getlasterror();
-        
-        errorInfo.code = udtError.getErrorCode();
-        strcpy(errorInfo.buf, udtError.getErrorMessage());
+        errorInfo.code = UDT::getlasterror_code();
         errorInfo.message = &errorInfo.buf[0];
-
-        udtError.clear();
         
+        strcpy(errorInfo.buf, UDT::getlasterror_desc());
+
         return errorInfo;
     }
     

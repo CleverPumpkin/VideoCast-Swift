@@ -1,13 +1,13 @@
 Pod::Spec.new do |s|
   s.name      = 'CPVideoCast'
-  s.version   = '0.1.6'
+  s.version   = '0.1.7'
   s.license   = { :type => "MIT", :file => "LICENSE" }
   s.summary   = 'A framework for broadcasting live video'
   s.homepage  = 'https://github.com/CleverPumpkin/VideoCast-Swift'
   s.authors   = { 'Tomohiro Matsuzawa' => 'thmatuza75@hotmail.com' }
   s.source    = { :git => 'https://github.com/CleverPumpkin/VideoCast-Swift.git', :tag => s.version }
 
-  s.ios.deployment_target = '8.0'
+  s.ios.deployment_target = '13.0'
 
 s.source_files = [ 'Source/**/*.{swift,h,metal}', 'SRT/*.{h,cpp}', 'SRT/Includes/*.h' ]
   s.public_header_files = [ 'SRT/Includes/*.h', 'SRT/udt_wrapper.h', 'Source/System/ShaderDefinitions.h' ]

@@ -42,45 +42,61 @@ public enum SRTLogLevel: Int {
     }
 }
 
-public struct SRTLogFAs: OptionSet {
-    public let rawValue: Int32
+public enum SRTLogFA: Int32 {
+    case general = 0        // gglog: General uncategorized log, for serious issues only
+    case sockmgmt = 1       // smlog: Socket create/open/close/configure activities
+    case conn = 2           // cnlog: Connection establishment and handshake
+    case xtimer = 3         // xtlog: The checkTimer and around activities
+    case tsbpd = 4          // tslog: The TsBPD thread
+    case rsrc = 5           // rslog: System resource allocation and management
+            
+    case congest = 7        // cclog: Congestion control module
+    case pfilter = 8        // pflog: Packet filter module
+            
+    case apiCtrl = 11       // aclog: API part for socket and library managmenet
+            
+    case queCtrl = 13       // qclog: Queue control activities
+            
+    case epollUpd = 16      // eilog: EPoll, internal update activities
+            
+    case apiRecv = 21       // arlog: API part for receiving
+    case bufRecv = 22       // brlog: Buffer, receiving side
+    case queRecv = 23       // qrlog: Queue, receiving side
+    case chnRecv = 24       // krlog: CChannel, receiving side
+    case grpRecv = 25       // grlog: Group, receiving side
+            
+    case apiSend = 31       // aslog: API part for sending
+    case bufSend = 32       // bslog: Buffer, sending side
+    case queSend = 33       // qslog: Queue, sending side
+    case chnSend = 34       // kslog: CChannel, sending side
+    case grpSend = 35       // gslog: Group, sending side
+            
+    case `internal` = 41    // inlog: Internal activities not connected directly to a socket
+            
+    case queMgmt = 43       // qmlog: Queue, management part
+    case chnMgmt = 44       // kmlog: CChannel, management part
+    case grpMgmt = 45       // gmlog: Group, management part
+    case epollApi = 46      // ealog: EPoll, API part
+            
+    case haicrypt = 6       // hclog: Haicrypt module area
+    case applog = 10        // aplog: Applications
+}
 
-    public init(rawValue: Int32) {
-        self.rawValue = rawValue
+public struct SRTLogFAs {
+    
+    private let options: Set<SRTLogFA>
+
+    public init(_ options: [SRTLogFA]) {
+        self.options = Set(options)
     }
-
-    public static let general   = SRTLogFAs([])
-    public static let bstats    = SRTLogFAs(rawValue: 1 << 0)
-    public static let control   = SRTLogFAs(rawValue: 1 << 1)
-    public static let data      = SRTLogFAs(rawValue: 1 << 2)
-    public static let tsbpd     = SRTLogFAs(rawValue: 1 << 3)
-    public static let rexmit    = SRTLogFAs(rawValue: 1 << 4)
-    public static let haicrypt  = SRTLogFAs(rawValue: 1 << 5)
-    public static let congest   = SRTLogFAs(rawValue: 1 << 6)
-
-    public static let all: SRTLogFAs = [.bstats, .control, .data, .tsbpd, .rexmit, .haicrypt]
-
+    
+    public init(_ option: SRTLogFA) {
+        self.options = [option]
+    }
+    
     public func setLogFA() {
-        if self.contains(.bstats) {
-            srt_addlogfa(SRT_LOGFA_BSTATS)
-        }
-        if self.contains(.control) {
-            srt_addlogfa(SRT_LOGFA_CONTROL)
-        }
-        if self.contains(.data) {
-            srt_addlogfa(SRT_LOGFA_DATA)
-        }
-        if self.contains(.tsbpd) {
-            srt_addlogfa(SRT_LOGFA_TSBPD)
-        }
-        if self.contains(.rexmit) {
-            srt_addlogfa(SRT_LOGFA_REXMIT)
-        }
-        if self.contains(.haicrypt) {
-            srt_addlogfa(SRT_LOGFA_HAICRYPT)
-        }
-        if self.contains(.congest) {
-            srt_addlogfa(SRT_LOGFA_CONGEST)
+        options.forEach {
+            srt_addlogfa($0.rawValue)
         }
     }
 }

@@ -326,7 +326,7 @@ extension VCSimpleSession {
         sessionParameters.data = (
             chunk: SRT_LIVE_DEF_PLSIZE,
             loglevel: .err,
-            logfa: .general,
+            logfa: SRTLogFAs(.general),
             logfile: "",
             internal_log: true,
             autoreconnect: autoreconnect,

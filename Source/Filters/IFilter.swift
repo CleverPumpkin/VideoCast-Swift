@@ -8,7 +8,7 @@
 
 import Foundation
 
-public protocol IFilter: class {
+public protocol IFilter: AnyObject {
     var initialized: Bool { get }
 
     func initialize()

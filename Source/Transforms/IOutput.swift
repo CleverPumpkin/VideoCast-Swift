@@ -8,7 +8,7 @@
 
 import Foundation
 
-public protocol IOutput: class {
+public protocol IOutput: AnyObject {
     func setEpoch(_ epoch: Date)
     func pushBuffer(_ data: UnsafeRawPointer, size: Int, metadata: IMetaData)
 }

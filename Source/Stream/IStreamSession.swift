@@ -24,7 +24,7 @@ public struct StreamStatus: OptionSet {
 
 public typealias StreamSessionCallback = (IStreamSession, StreamStatus) -> Void
 
-public protocol IStreamSession: class {
+public protocol IStreamSession: AnyObject {
     var status: StreamStatus { get }
     var negotiateSSL: Bool { get set }
 
