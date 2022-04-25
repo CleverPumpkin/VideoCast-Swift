@@ -23,7 +23,7 @@ extension TSMultiplexer {
         func write_section(_ buf: inout [UInt8]) {
             var packet: [UInt8] = .init()
             packet.reserveCapacity(C.TS_PACKET_SIZE)
-            let crc = CFSwapInt32(CRC.shared.calculate(.crc32IEEE, crc: UInt32.max, buffer: buf, length: buf.count))
+            let crc = CRC32.MPEG2.calculate(Data(buf))
             var first: Bool
             var b: UInt8
             var len1: Int
