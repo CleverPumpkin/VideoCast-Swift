@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name      = 'CPVideoCast'
-  s.version   = '0.1.8'
+  s.version   = '0.1.9'
   s.license   = { :type => "MIT", :file => "LICENSE" }
   s.summary   = 'A framework for broadcasting live video'
   s.homepage  = 'https://github.com/CleverPumpkin/VideoCast-Swift'
@@ -17,6 +17,7 @@ s.source_files = [ 'Source/**/*.{swift,h,metal}', 'SRT/*.{h,cpp}', 'SRT/Includes
 
   s.pod_target_xcconfig = {
     'CLANG_WARN_DOCUMENTATION_COMMENTS' => 'NO',
+    'ENABLE_BITCODE' => 'NO',
   }
   s.cocoapods_version = ">= 1.4.0"
   s.swift_version = "5.0"
