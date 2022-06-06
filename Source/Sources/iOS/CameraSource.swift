@@ -27,6 +27,8 @@ open class CameraSource: ISource {
      * \return `true` is returned if the orientation is locked
      */
     open var orientationLocked: Bool = false
+    
+    var cameraSnapshot: CGImage?
 
     private var matrix: GLKMatrix4 = GLKMatrix4Identity
 

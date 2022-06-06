@@ -204,6 +204,10 @@ open class VCSimpleSession {
             videoMixer.setSourceFilter(WeakRefISource(value: cameraSource), filter: filter)
         }
     }
+    
+    public var videoSourceSnapshot: CGImage? {
+        cameraSource?.cameraSnapshot
+    }
 
     let screencast: Bool
 
