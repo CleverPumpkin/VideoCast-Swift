@@ -305,6 +305,19 @@ open class VTEncode: IEncoder {
             l.pushBuffer(data, size: size, metadata: md)
         }
     }
+    
+    func teardownCompressionSession() {
+        guard let compressionSession = compressionSession else {
+            Logger.debug("unexpected return")
+            return
+        }
+        VTCompressionSessionInvalidate(compressionSession)
+        self.compressionSession = nil
+    }
+    
+    func restartSession() {
+        setupCompressionSession(baseline)
+    }
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func setupCompressionSession(_ useBaseline: Bool) {
@@ -449,14 +462,5 @@ open class VTEncode: IEncoder {
                 VTCompressionSessionPrepareToEncodeFrames(session)
             }
         }
-    }
-
-    private func teardownCompressionSession() {
-        guard let compressionSession = compressionSession else {
-            Logger.debug("unexpected return")
-            return
-        }
-        VTCompressionSessionInvalidate(compressionSession)
-        self.compressionSession = nil
     }
 }

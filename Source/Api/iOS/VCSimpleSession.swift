@@ -354,4 +354,28 @@ open class VCSimpleSession {
     open func pushAudioMic(_ sampleBuffer: CMSampleBuffer) {
         audioMicSampleSource?.pushSample(sampleBuffer)
     }
+    
+    open func stopVideoCapturing() {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.cameraSource?.stopSession()
+            
+            guard let vtEncoder = self?.vtEncoder as? VTEncode else {
+                return
+            }
+            
+            vtEncoder.teardownCompressionSession()
+        }
+    }
+    
+    open func startVideoCapturing() {
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.cameraSource?.startSession()
+            
+            guard let vtEncoder = self?.vtEncoder as? VTEncode else {
+                return
+            }
+            
+            vtEncoder.restartSession()
+        }
+    }
 }

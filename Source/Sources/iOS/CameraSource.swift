@@ -56,7 +56,17 @@ open class CameraSource: ISource {
         }
         previewLayer = nil
     }
-
+    
+    // This method is synchronous and blocks until the receiver has completely stopped running.
+    func stopSession() {
+        captureSession?.stopRunning()
+    }
+    
+    // This method is synchronous and blocks until the receiver has completely stopped running.
+    func startSession() {
+        captureSession?.startRunning()
+    }
+    
     /*!
      *  Get the AVCaptureVideoPreviewLayer associated with the camera output.
      *
