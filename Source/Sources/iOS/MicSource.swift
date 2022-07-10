@@ -72,6 +72,16 @@ open class MicSource: ISource {
 
         return status
     }
+    
+    private let handleOutputBuffer: AURenderCallback = { (
+        inRefCon,
+        ioActionFlags,
+        inTimeStamp,
+        inBusNumber,
+        inNumberFrames,
+        ioData ) -> OSStatus in
+        return noErr
+    }
 
     /*!
      *  Constructor.
@@ -91,104 +101,8 @@ open class MicSource: ISource {
                 mode: AVAudioSession.Mode = .default) {
         self.sampleRate = sampleRate
         self.channelCount = preferedChannelCount
-
-        let session = AVAudioSession.sharedInstance()
-
-        let permission = { [weak self] (granted: Bool) in
-            guard let strongSelf = self else { return }
-
-            if granted {
-
-                do {
-                    try session.setCategory(.playAndRecord,
-                                            options: [.defaultToSpeaker, .mixWithOthers, .allowBluetooth])
-                    try session.setActive(true)
-                } catch {
-                    Logger.error("Failed to set up audio session: \(error)")
-                    return
-                }
-
-                do {
-                    try session.setMode(mode)
-                } catch {
-                    Logger.error("Failed to set mode: \(error)")
-                }
-
-                do {
-                    try session.setPreferredInputNumberOfChannels(preferedChannelCount)
-                } catch {
-                    Logger.info("Failed to set preferred input number of channels: \(error)")
-                }
-
-                let channelCount = session.inputNumberOfChannels
-                strongSelf.channelCount = channelCount
-
-                var acd = AudioComponentDescription(
-                    componentType: kAudioUnitType_Output,
-                    componentSubType: kAudioUnitSubType_VoiceProcessingIO,
-                    componentManufacturer: kAudioUnitManufacturer_Apple,
-                    componentFlags: 0,
-                    componentFlagsMask: 0)
-
-                strongSelf.component = AudioComponentFindNext(nil, &acd)
-
-                guard let component = strongSelf.component else {
-                    Logger.debug("unexpected return")
-                    return
-                }
-                AudioComponentInstanceNew(component, &strongSelf._audioUnit)
-                guard let audioUnit = strongSelf._audioUnit else {
-                    Logger.error("AudioComponentInstanceNew failed")
-                    return
-                }
-
-                excludeAudioUnit?(audioUnit)
-                var flagOne: UInt32 = 1
-
-                AudioUnitSetProperty(audioUnit, kAudioOutputUnitProperty_EnableIO,
-                                     kAudioUnitScope_Input, 1, &flagOne, UInt32(MemoryLayout<UInt32>.size))
-
-                var desc = AudioStreamBasicDescription()
-                desc.mSampleRate = sampleRate
-                desc.mFormatID = kAudioFormatLinearPCM
-                desc.mFormatFlags =
-                    kAudioFormatFlagIsSignedInteger | kAudioFormatFlagsNativeEndian | kAudioFormatFlagIsPacked
-                desc.mChannelsPerFrame = UInt32(channelCount)
-                desc.mFramesPerPacket = 1
-                desc.mBitsPerChannel = 16
-                desc.mBytesPerFrame = desc.mBitsPerChannel / 8 * desc.mChannelsPerFrame
-                desc.mBytesPerPacket = desc.mBytesPerFrame * desc.mFramesPerPacket
-
-                var cb = AURenderCallbackStruct(
-                    inputProc: strongSelf.handleInputBuffer,
-                    inputProcRefCon: UnsafeMutableRawPointer(Unmanaged.passUnretained(strongSelf).toOpaque()))
-                AudioUnitSetProperty(
-                    audioUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, 1, &desc,
-                    UInt32(MemoryLayout<AudioStreamBasicDescription>.size))
-                AudioUnitSetProperty(audioUnit, kAudioOutputUnitProperty_SetInputCallback,
-                                     kAudioUnitScope_Global, 1, &cb,
-                                     UInt32(MemoryLayout<AURenderCallbackStruct>.size))
-
-                strongSelf.interruptionHandler = InterruptionHandler()
-                strongSelf.interruptionHandler?.source = self
-
-                if let interruptionHandler = strongSelf.interruptionHandler {
-                    NotificationCenter.default.addObserver(
-                        interruptionHandler,
-                        selector: #selector(InterruptionHandler.handleInterruption(notification:)),
-                        name: AVAudioSession.interruptionNotification, object: nil
-                    )
-                }
-
-                AudioUnitInitialize(audioUnit)
-                let ret = AudioOutputUnitStart(audioUnit)
-                if ret != noErr {
-                    Logger.error("Failed to start microphone!")
-                }
-            }
-        }
-
-        session.requestRecordPermission(permission)
+        
+        restart()
     }
 
     deinit {
@@ -256,6 +170,126 @@ open class MicSource: ISource {
         Logger.debug("interruptionEnded")
         AudioOutputUnitStart(audioUnit)
     }
+    
+    func restart() {
+        stop()
+        
+        let session = AVAudioSession.sharedInstance()
+
+        let permission = { [weak self] (granted: Bool) in
+            guard let strongSelf = self else { return }
+
+            if granted {
+                
+                do {
+                    try session.setPreferredInputNumberOfChannels(strongSelf.channelCount)
+                } catch {
+                    Logger.info("Failed to set preferred input number of channels: \(error)")
+                }
+
+                let channelCount = session.inputNumberOfChannels
+                strongSelf.channelCount = channelCount
+
+                var acd = AudioComponentDescription(
+                    componentType: kAudioUnitType_Output,
+                    componentSubType: kAudioUnitSubType_VoiceProcessingIO,
+                    componentManufacturer: kAudioUnitManufacturer_Apple,
+                    componentFlags: 0,
+                    componentFlagsMask: 0)
+
+                strongSelf.component = AudioComponentFindNext(nil, &acd)
+
+                guard let component = strongSelf.component else {
+                    Logger.debug("unexpected return")
+                    return
+                }
+                AudioComponentInstanceNew(component, &strongSelf._audioUnit)
+                guard let audioUnit = strongSelf._audioUnit else {
+                    Logger.error("AudioComponentInstanceNew failed")
+                    return
+                }
+
+                var flagOne: UInt32 = 1
+
+                AudioUnitSetProperty(audioUnit, kAudioOutputUnitProperty_EnableIO,
+                                     kAudioUnitScope_Input, 1, &flagOne, UInt32(MemoryLayout<UInt32>.size))
+
+                var desc = AudioStreamBasicDescription()
+                desc.mSampleRate = strongSelf.sampleRate
+                desc.mFormatID = kAudioFormatLinearPCM
+                desc.mFormatFlags =
+                    kAudioFormatFlagIsSignedInteger | kAudioFormatFlagsNativeEndian | kAudioFormatFlagIsPacked
+                desc.mChannelsPerFrame = UInt32(channelCount)
+                desc.mFramesPerPacket = 1
+                desc.mBitsPerChannel = 16
+                desc.mBytesPerFrame = desc.mBitsPerChannel / 8 * desc.mChannelsPerFrame
+                desc.mBytesPerPacket = desc.mBytesPerFrame * desc.mFramesPerPacket
+
+                var inputCallback = AURenderCallbackStruct(
+                    inputProc: strongSelf.handleInputBuffer,
+                    inputProcRefCon: UnsafeMutableRawPointer(
+                        Unmanaged.passUnretained(strongSelf).toOpaque()
+                    )
+                )
+                
+                var outputCallback = AURenderCallbackStruct(
+                    inputProc: strongSelf.handleOutputBuffer,
+                    inputProcRefCon: UnsafeMutableRawPointer(
+                        Unmanaged.passUnretained(strongSelf).toOpaque()
+                    )
+                )
+                
+                AudioUnitSetProperty(
+                    audioUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, 1, &desc,
+                    UInt32(MemoryLayout<AudioStreamBasicDescription>.size))
+                
+                AudioUnitSetProperty(
+                    audioUnit,
+                    kAudioOutputUnitProperty_SetInputCallback,
+                    kAudioUnitScope_Global,
+                    1,
+                    &inputCallback,
+                    UInt32(MemoryLayout<AURenderCallbackStruct>.size)
+                )
+                
+                AudioUnitSetProperty(
+                    audioUnit,
+                    kAudioUnitProperty_SetRenderCallback,
+                    kAudioUnitScope_Global,
+                    0,
+                    &outputCallback,
+                    UInt32(MemoryLayout<AURenderCallbackStruct>.size)
+                )
+
+                strongSelf.interruptionHandler = InterruptionHandler()
+                strongSelf.interruptionHandler?.source = self
+
+                if let interruptionHandler = strongSelf.interruptionHandler {
+                    NotificationCenter.default.addObserver(
+                        interruptionHandler,
+                        selector: #selector(InterruptionHandler.handleInterruption(notification:)),
+                        name: AVAudioSession.interruptionNotification,
+                        object: nil
+                    )
+                    
+                    NotificationCenter.default.addObserver(
+                        interruptionHandler,
+                        selector: #selector(InterruptionHandler.handleRouteChange(notification:)),
+                        name: AVAudioSession.routeChangeNotification,
+                        object: nil
+                    )
+                }
+
+                AudioUnitInitialize(audioUnit)
+                let ret = AudioOutputUnitStart(audioUnit)
+                if ret != noErr {
+                    Logger.error("Failed to start microphone!")
+                }
+            }
+        }
+
+        session.requestRecordPermission(permission)
+    }
 }
 
 private class InterruptionHandler: NSObject {
@@ -273,6 +307,24 @@ private class InterruptionHandler: NSObject {
             source?.interruptionBegan()
         } else {
             source?.interruptionEnded()
+        }
+    }
+    
+    @objc func handleRouteChange(notification: Notification) {
+        guard let reasonType = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] else {
+            Logger.debug("unexpected return")
+            return
+        }
+        
+        let reason = AVAudioSession.RouteChangeReason(
+            rawValue: (reasonType as AnyObject).uintValue
+        )
+
+        switch reason {
+        case .newDeviceAvailable, .oldDeviceUnavailable:
+            source?.restart()
+        default:
+            break
         }
     }
 }
