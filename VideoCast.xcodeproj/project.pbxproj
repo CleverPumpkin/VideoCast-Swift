@@ -222,7 +222,7 @@
 		8116922F2125591D0074EA71 /* SRTStats.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SRTStats.swift; sourceTree = "<group>"; };
 		811BF9971FFE2F7D00E90EEF /* VideoCast.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = VideoCast.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		811BF99F1FFE2F7D00E90EEF /* VideoCast iOS Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "VideoCast iOS Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		811D4B961FFF1B2E004EC189 /* VCSimpleSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCSimpleSession.swift; sourceTree = "<group>"; };
+		811D4B961FFF1B2E004EC189 /* VCSimpleSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCSimpleSession.swift; sourceTree = "<group>"; usesTabs = 0; };
 		81278853212E7285008776B6 /* VCPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VCPreviewView.swift; sourceTree = "<group>"; };
 		81278855212EBC0B008776B6 /* MetalVideoMixer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalVideoMixer.swift; sourceTree = "<group>"; };
 		812B91782018556100D93731 /* BasicVideoFilterBGRA.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicVideoFilterBGRA.swift; sourceTree = "<group>"; };
@@ -281,7 +281,7 @@
 		81C3C9FC2022F4E0007E05A1 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		81C5831F2040006200BDE428 /* CRC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CRC.swift; sourceTree = "<group>"; };
 		81CA5F25203675A00050059A /* Atomic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Atomic.swift; sourceTree = "<group>"; };
-		81CA5F282036E1300050059A /* VTEncode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VTEncode.swift; sourceTree = "<group>"; };
+		81CA5F282036E1300050059A /* VTEncode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VTEncode.swift; sourceTree = "<group>"; usesTabs = 0; };
 		81CE06F4204E89C300E71AB6 /* SRTSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SRTSession.swift; sourceTree = "<group>"; };
 		81CE06F7204EA85000E71AB6 /* SRTTransmit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SRTTransmit.swift; sourceTree = "<group>"; };
 		81D1C1E4203289860087F23E /* BasicVideoFilterBGRAinYUVAout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BasicVideoFilterBGRAinYUVAout.swift; sourceTree = "<group>"; };
@@ -296,7 +296,7 @@
 		81D3309E20500EEC001E6AE7 /* SRTUtil.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SRTUtil.swift; sourceTree = "<group>"; };
 		81DD0279200457210064A203 /* IVideoFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IVideoFilter.swift; sourceTree = "<group>"; };
 		81DD028020047B960064A203 /* MicSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicSource.swift; sourceTree = "<group>"; };
-		81DD028220047BB80064A203 /* CameraSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraSource.swift; sourceTree = "<group>"; };
+		81DD028220047BB80064A203 /* CameraSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraSource.swift; sourceTree = "<group>"; usesTabs = 0; };
 		81DD028520047C590064A203 /* PixelBufferSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PixelBufferSource.swift; sourceTree = "<group>"; };
 		81DD028820047D330064A203 /* AspectTransform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AspectTransform.swift; sourceTree = "<group>"; };
 		81DD028B2004822B0064A203 /* PositionTransform.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PositionTransform.swift; sourceTree = "<group>"; };
@@ -1151,21 +1151,23 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 2YBG8BB5C7;
+				DEVELOPMENT_TEAM = N96NQPX5MR;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/SRT/srt/srtcore";
 				INFOPLIST_FILE = Source/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/SRT",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.openfresh.videocast;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.openfresh.videocast1;
 				PRODUCT_NAME = VideoCast;
 				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_INCLUDE_PATHS = "${SRCROOT}";
 				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -1182,22 +1184,24 @@
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				DEFINES_MODULE = YES;
-				DEVELOPMENT_TEAM = 2YBG8BB5C7;
+				DEVELOPMENT_TEAM = N96NQPX5MR;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				HEADER_SEARCH_PATHS = "$(PROJECT_DIR)/SRT/srt/srtcore";
 				INFOPLIST_FILE = Source/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/SRT",
 				);
 				ONLY_ACTIVE_ARCH = NO;
-				PRODUCT_BUNDLE_IDENTIFIER = io.github.openfresh.videocast;
+				PRODUCT_BUNDLE_IDENTIFIER = io.github.openfresh.videocast1;
 				PRODUCT_NAME = VideoCast;
 				SKIP_INSTALL = YES;
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_INCLUDE_PATHS = "${SRCROOT}";
 				SWIFT_OBJC_BRIDGING_HEADER = "";
 				SWIFT_VERSION = 5.0;
@@ -1270,6 +1274,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_BITCODE = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -1332,6 +1337,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_BITCODE = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
