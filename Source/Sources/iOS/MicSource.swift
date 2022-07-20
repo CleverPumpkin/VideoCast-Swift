@@ -13,318 +13,465 @@ import AVFoundation
  *  Capture audio from the device's microphone.
  *
  */
-open class MicSource: ISource {
-    open func hash(into hasher: inout Hasher) {
-        hasher.combine(ObjectIdentifier(self).hashValue)
-    }
 
-    public static func == (lhs: MicSource, rhs: MicSource) -> Bool {
-        return ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
-    }
+// MARK: - Types
 
-    open var filter: IFilter?
-    open var audioUnit: AudioUnit? {
-        return _audioUnit
-    }
+public enum MicSourseError: Error {
+    case cantFindAudioComponent
+    case cantCreateAudioComponentInstance
+    case cantEnableInput
+    case cantSetAudioStreamDescrtiption
+    case cantSetCallbacks
+    case cantStartAudioUnit
+}
 
-    private var interruptionHandler: InterruptionHandler?
+// MARK: - Implementation
 
-    private var _audioUnit: AudioComponentInstance?
-    private var component: AudioComponent?
-
+public class MicSource {
+    
+    // MARK: - Public vars
+    
+    public var filter: IFilter?
+    
+    // MARK: - Private vars
+    
+    private var audioUnit: AudioComponentInstance?
+    private let component: AudioComponent?
     private let sampleRate: Double
-    private var channelCount: Int
-
     private weak var output: IOutput?
-
-    private let handleInputBuffer: AURenderCallback = { (
-        inRefCon,
-        ioActionFlags,
-        inTimeStamp,
-        inBusNumber,
-        inNumberFrames,
-        ioData ) -> OSStatus in
-        let mc = unsafeBitCast(inRefCon, to: MicSource.self)
-        guard let audioUnit = mc.audioUnit else {
+    
+    private lazy var notificationsHandler: NotificationHandler = {
+        let handler = NotificationHandler()
+        
+        handler.source = self
+        
+        return handler
+    }()
+    
+    // MARK: - AudioUnit callbacks
+    
+    private let handleInputBuffer: AURenderCallback = {
+        (inRefCon, ioActionFlags, inTimeStamp, inBusNumber, inNumberFrames, ioData) -> OSStatus in
+        
+        let sourse = unsafeBitCast(inRefCon, to: MicSource.self)
+        
+        guard let audioUnit = sourse.audioUnit else {
             Logger.debug("unexpected return")
             return 0
         }
 
-        let buffer = AudioBuffer(mNumberChannels: 2, mDataByteSize: 0, mData: nil)
+        let buffer = AudioBuffer(
+            mNumberChannels: Constants.prefferedNumberOfChannels,
+            mDataByteSize: 0,
+            mData: nil
+        )
 
-        var buffers = AudioBufferList(mNumberBuffers: 1, mBuffers: buffer)
+        var bufferList = AudioBufferList(
+            mNumberBuffers: 1,
+            mBuffers: buffer
+        )
 
-        let status = AudioUnitRender(audioUnit,
-                                     ioActionFlags,
-                                     inTimeStamp,
-                                     inBusNumber,
-                                     inNumberFrames,
-                                     &buffers)
+        let status = AudioUnitRender(
+            audioUnit,
+            ioActionFlags,
+            inTimeStamp,
+            inBusNumber,
+            inNumberFrames,
+            &bufferList
+        )
 
         guard status == noErr else {
             Logger.debug("unexpected return: \(status)")
             return status
         }
-        let inputDataPtr = UnsafeMutableAudioBufferListPointer(&buffers)
 
-        mc.inputCallback(data: inputDataPtr[0].mData, data_size:
-            Int(inputDataPtr[0].mDataByteSize), inNumberFrames: Int(inNumberFrames))
+        let inputDataPtr = UnsafeMutableAudioBufferListPointer(&bufferList)
+
+        sourse.inputCallback(
+            data: inputDataPtr[0].mData,
+            data_size:
+            Int(inputDataPtr[0].mDataByteSize),
+            inNumberFrames:
+            Int(inNumberFrames)
+        )
 
         return status
     }
     
-    private let handleOutputBuffer: AURenderCallback = { (
-        inRefCon,
-        ioActionFlags,
-        inTimeStamp,
-        inBusNumber,
-        inNumberFrames,
-        ioData ) -> OSStatus in
+    private let handleOutputBuffer: AURenderCallback = {
+        (_, _, _, _, _, _) -> OSStatus in
+        // no-op (Required only for VoiceProcessingIO to disable console error output)
         return noErr
     }
-
-    /*!
-     *  Constructor.
-     *
-     *  \param audioSampleRate the sample rate in Hz to capture audio at.
-     *         Best results if this matches the mixer's sampling rate.
-     *  \param excludeAudioUnit An optional lambda method that is called when the source generates its Audio Unit.
-     *                          The parameter of this method will be a reference to its Audio Unit.  This is useful for
-     *                          applications that may be capturing Audio Unit data and
-     *                          do not wish to capture this source.
-     *
-     */
-    // swiftlint:disable:next function_body_length
-    public init(sampleRate: Double = 48000,
-                preferedChannelCount: Int = 2,
-                excludeAudioUnit: ((AudioUnit) -> Void)? = nil,
-                mode: AVAudioSession.Mode = .default) {
-        self.sampleRate = sampleRate
-        self.channelCount = preferedChannelCount
+    
+    // MARK: - Initialization/Deinitialization
+    
+    public init(
+        sampleRate: Double = 48000,
+        useVoiceProcessingIO: Bool = true
+    ) throws {
         
-        restart()
-    }
+        let componentSubType = useVoiceProcessingIO ? kAudioUnitSubType_VoiceProcessingIO : kAudioUnitSubType_RemoteIO
+        
+        var audioComponentDescription = AudioComponentDescription(
+            componentType: kAudioUnitType_Output,
+            componentSubType: componentSubType,
+            componentManufacturer: kAudioUnitManufacturer_Apple,
+            componentFlags: 0,
+            componentFlagsMask: 0
+        )
+        
+        var inputStreamDescription = AudioStreamBasicDescription()
+        
+        inputStreamDescription.mSampleRate = sampleRate
+        inputStreamDescription.mFormatID = kAudioFormatLinearPCM
+        inputStreamDescription.mFormatFlags = kAudioFormatFlagIsSignedInteger | kAudioFormatFlagsNativeEndian | kAudioFormatFlagIsPacked
+        inputStreamDescription.mChannelsPerFrame = Constants.prefferedNumberOfChannels
+        inputStreamDescription.mFramesPerPacket = 1
+        inputStreamDescription.mBitsPerChannel = 16
+        inputStreamDescription.mBytesPerFrame = inputStreamDescription.mBitsPerChannel / 8 * inputStreamDescription.mChannelsPerFrame
+        inputStreamDescription.mBytesPerPacket = inputStreamDescription.mBytesPerFrame * inputStreamDescription.mFramesPerPacket
+        
+        guard let component = AudioComponentFindNext(nil, &audioComponentDescription) else {
+            Logger.debug("Can`t find audio component")
+            throw MicSourseError.cantFindAudioComponent
+        }
+        
+        var audioComponentInstance: AudioComponentInstance?
+        var latestOperationResult: OSStatus = noErr
+        
+        latestOperationResult = AudioComponentInstanceNew(component, &audioComponentInstance)
+        
+        guard
+            latestOperationResult == noErr,
+            let strongAudioComponentInstance = audioComponentInstance
+        else {
+            Logger.debug("Can`t create instance of AudioComponentInstance")
+            throw MicSourseError.cantCreateAudioComponentInstance
+        }
+        
+        var flagOne: UInt32 = 1
+        
+        latestOperationResult = AudioUnitSetProperty(
+            strongAudioComponentInstance,
+            kAudioOutputUnitProperty_EnableIO,
+            kAudioUnitScope_Input,
+            .inputBus,
+            &flagOne,
+            UInt32(MemoryLayout<UInt32>.size)
+        )
+        
+        guard latestOperationResult == noErr else {
+            Logger.debug("Can`t enable input in AudioUnit")
+            throw MicSourseError.cantEnableInput
+        }
+        
+        latestOperationResult = AudioUnitSetProperty(
+            strongAudioComponentInstance,
+            kAudioUnitProperty_StreamFormat,
+            kAudioUnitScope_Output,
+            .inputBus,
+            &inputStreamDescription,
+            UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+        )
+        
+        guard latestOperationResult == noErr else {
+            Logger.debug("Can`t set input AudioStreamDescrtiption in AudioUnit")
+            throw MicSourseError.cantSetAudioStreamDescrtiption
+        }
+        
+        self.audioUnit = audioComponentInstance
+        self.component = component
+        self.sampleRate = sampleRate
+        
+        var inputCallback = AURenderCallbackStruct(
+            inputProc: handleInputBuffer,
+            inputProcRefCon: UnsafeMutableRawPointer(
+                Unmanaged.passUnretained(self).toOpaque()
+            )
+        )
 
+        var outputCallback = AURenderCallbackStruct(
+            inputProc: handleOutputBuffer,
+            inputProcRefCon: UnsafeMutableRawPointer(
+                Unmanaged.passUnretained(self).toOpaque()
+            )
+        )
+        
+        latestOperationResult = AudioUnitSetProperty(
+            strongAudioComponentInstance,
+            kAudioOutputUnitProperty_SetInputCallback,
+            kAudioUnitScope_Global,
+            .inputBus,
+            &inputCallback,
+            UInt32(MemoryLayout<AURenderCallbackStruct>.size)
+        )
+        
+        if useVoiceProcessingIO && latestOperationResult == noErr {
+            latestOperationResult = AudioUnitSetProperty(
+                strongAudioComponentInstance,
+                kAudioUnitProperty_SetRenderCallback,
+                kAudioUnitScope_Global,
+                .outputBus,
+                &outputCallback,
+                UInt32(MemoryLayout<AURenderCallbackStruct>.size)
+            )
+        }
+        
+        guard latestOperationResult == noErr else {
+            Logger.debug("Can`t set input callback")
+            throw MicSourseError.cantSetCallbacks
+        }
+        
+        guard initializeAndStartAudioUnit() else {
+            Logger.debug("Can`t start AudioUnit")
+            throw MicSourseError.cantStartAudioUnit
+        }
+        
+        subscribeForNotifications()
+    }
+    
     deinit {
-        stop()
+        dispose()
     }
-
-    open func stop() {
-        if let audioUnit = _audioUnit {
-            if let interruptionHandler = interruptionHandler {
-                NotificationCenter.default.removeObserver(interruptionHandler)
-                interruptionHandler.source = nil
-            }
-
-            AudioOutputUnitStop(audioUnit)
-            AudioComponentInstanceDispose(audioUnit)
-            _audioUnit = nil
+    
+    // MARK: - Internal methods
+    
+    func dispose() {
+        guard let audioUnit = audioUnit else {
+            return
         }
+        
+        notificationsHandler.source = nil
+        
+        NotificationCenter.default.removeObserver(notificationsHandler)
+        
+        AudioOutputUnitStop(audioUnit)
+        AudioComponentInstanceDispose(audioUnit)
+        
+        self.audioUnit = nil
     }
+    
+    // MARK: - Private methods
+    
+    private func subscribeForNotifications() {
+        
+        NotificationCenter.default.addObserver(
+            notificationsHandler,
+            selector: #selector(NotificationHandler.handleInterruption(notification:)),
+            name: AVAudioSession.interruptionNotification,
+            object: nil
+        )
 
-    /*! ISource::setOutput */
-    open func setOutput(_ output: IOutput) {
-        self.output = output
-        if let mixer = output as? IAudioMixer {
-            mixer.registerSource(self)
-        }
+        NotificationCenter.default.addObserver(
+            notificationsHandler,
+            selector: #selector(NotificationHandler.handleRouteChange(notification:)),
+            name: AVAudioSession.routeChangeNotification,
+            object: nil
+        )
     }
-
-    /*! Used by the Audio Unit as a callback method */
-    open func inputCallback(data: UnsafeMutableRawPointer?, data_size: Int, inNumberFrames: Int) {
-        guard let output = output, let data = data else {
+    
+    private func inputCallback(data: UnsafeMutableRawPointer?, data_size: Int, inNumberFrames: Int) {
+        guard
+            let output = output,
+            let data = data
+        else {
             Logger.debug("unexpected return")
             return
         }
 
         let md = AudioBufferMetadata()
-
-        md.data = (Int(sampleRate),
-                   16,
-                   channelCount,
-                   AudioFormatFlags(kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked),
-                   channelCount * 2,
-                   inNumberFrames,
-                   false,
-                   false,
-                   WeakRefISource(value: self)
+        let channelCount = Int(Constants.prefferedNumberOfChannels)
+        
+        md.data = (
+            Int(sampleRate),
+            16,
+            channelCount,
+            AudioFormatFlags(kAudioFormatFlagIsSignedInteger | kAudioFormatFlagIsPacked),
+            channelCount * 2,
+            inNumberFrames,
+            false,
+            false,
+            WeakRefISource(value: self)
         )
 
         output.pushBuffer(data, size: data_size, metadata: md)
     }
-
-    open func interruptionBegan() {
+    
+    private func interruptionBegan() {
         guard let audioUnit = audioUnit else {
             Logger.debug("unexpected return")
             return
         }
+        
         Logger.debug("interruptionBegan")
-        AudioOutputUnitStart(audioUnit)
+        AudioOutputUnitStop(audioUnit)
     }
 
-    open func interruptionEnded() {
+    private func interruptionEnded() {
         guard let audioUnit = audioUnit else {
             Logger.debug("unexpected return")
             return
         }
+        
         Logger.debug("interruptionEnded")
+        
         AudioOutputUnitStart(audioUnit)
     }
     
-    func restart() {
-        stop()
-        
-        let session = AVAudioSession.sharedInstance()
-
-        let permission = { [weak self] (granted: Bool) in
-            guard let strongSelf = self else { return }
-
-            if granted {
-                
-                do {
-                    try session.setPreferredInputNumberOfChannels(strongSelf.channelCount)
-                } catch {
-                    Logger.info("Failed to set preferred input number of channels: \(error)")
-                }
-
-                let channelCount = session.inputNumberOfChannels
-                strongSelf.channelCount = channelCount
-
-                var acd = AudioComponentDescription(
-                    componentType: kAudioUnitType_Output,
-                    componentSubType: kAudioUnitSubType_VoiceProcessingIO,
-                    componentManufacturer: kAudioUnitManufacturer_Apple,
-                    componentFlags: 0,
-                    componentFlagsMask: 0)
-
-                strongSelf.component = AudioComponentFindNext(nil, &acd)
-
-                guard let component = strongSelf.component else {
-                    Logger.debug("unexpected return")
-                    return
-                }
-                AudioComponentInstanceNew(component, &strongSelf._audioUnit)
-                guard let audioUnit = strongSelf._audioUnit else {
-                    Logger.error("AudioComponentInstanceNew failed")
-                    return
-                }
-
-                var flagOne: UInt32 = 1
-
-                AudioUnitSetProperty(audioUnit, kAudioOutputUnitProperty_EnableIO,
-                                     kAudioUnitScope_Input, 1, &flagOne, UInt32(MemoryLayout<UInt32>.size))
-
-                var desc = AudioStreamBasicDescription()
-                desc.mSampleRate = strongSelf.sampleRate
-                desc.mFormatID = kAudioFormatLinearPCM
-                desc.mFormatFlags =
-                    kAudioFormatFlagIsSignedInteger | kAudioFormatFlagsNativeEndian | kAudioFormatFlagIsPacked
-                desc.mChannelsPerFrame = UInt32(channelCount)
-                desc.mFramesPerPacket = 1
-                desc.mBitsPerChannel = 16
-                desc.mBytesPerFrame = desc.mBitsPerChannel / 8 * desc.mChannelsPerFrame
-                desc.mBytesPerPacket = desc.mBytesPerFrame * desc.mFramesPerPacket
-
-                var inputCallback = AURenderCallbackStruct(
-                    inputProc: strongSelf.handleInputBuffer,
-                    inputProcRefCon: UnsafeMutableRawPointer(
-                        Unmanaged.passUnretained(strongSelf).toOpaque()
-                    )
-                )
-                
-                var outputCallback = AURenderCallbackStruct(
-                    inputProc: strongSelf.handleOutputBuffer,
-                    inputProcRefCon: UnsafeMutableRawPointer(
-                        Unmanaged.passUnretained(strongSelf).toOpaque()
-                    )
-                )
-                
-                AudioUnitSetProperty(
-                    audioUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, 1, &desc,
-                    UInt32(MemoryLayout<AudioStreamBasicDescription>.size))
-                
-                AudioUnitSetProperty(
-                    audioUnit,
-                    kAudioOutputUnitProperty_SetInputCallback,
-                    kAudioUnitScope_Global,
-                    1,
-                    &inputCallback,
-                    UInt32(MemoryLayout<AURenderCallbackStruct>.size)
-                )
-                
-                AudioUnitSetProperty(
-                    audioUnit,
-                    kAudioUnitProperty_SetRenderCallback,
-                    kAudioUnitScope_Global,
-                    0,
-                    &outputCallback,
-                    UInt32(MemoryLayout<AURenderCallbackStruct>.size)
-                )
-
-                strongSelf.interruptionHandler = InterruptionHandler()
-                strongSelf.interruptionHandler?.source = self
-
-                if let interruptionHandler = strongSelf.interruptionHandler {
-                    NotificationCenter.default.addObserver(
-                        interruptionHandler,
-                        selector: #selector(InterruptionHandler.handleInterruption(notification:)),
-                        name: AVAudioSession.interruptionNotification,
-                        object: nil
-                    )
-                    
-                    NotificationCenter.default.addObserver(
-                        interruptionHandler,
-                        selector: #selector(InterruptionHandler.handleRouteChange(notification:)),
-                        name: AVAudioSession.routeChangeNotification,
-                        object: nil
-                    )
-                }
-
-                AudioUnitInitialize(audioUnit)
-                let ret = AudioOutputUnitStart(audioUnit)
-                if ret != noErr {
-                    Logger.error("Failed to start microphone!")
-                }
-            }
+    // Not in use
+    private func restart() -> Bool {
+        guard stopAndUninitializeAudioUnit() else {
+            Logger.debug("Can`t stop AudioUnit")
+            return false
         }
-
-        session.requestRecordPermission(permission)
+        
+        // You can change sample rate here
+        
+        return initializeAndStartAudioUnit()
+    }
+    
+    private func stopAndUninitializeAudioUnit() -> Bool {
+        guard let audioUnit = audioUnit else {
+            return false
+        }
+        
+        guard AudioOutputUnitStop(audioUnit) == noErr else {
+            return false
+        }
+        
+        return AudioUnitUninitialize(audioUnit) == noErr
+    }
+    
+    private func initializeAndStartAudioUnit() -> Bool {
+        guard let audioUnit = audioUnit else {
+            return false
+        }
+        
+        guard AudioUnitInitialize(audioUnit) == noErr else {
+            return false
+        }
+        
+        return AudioOutputUnitStart(audioUnit) == noErr
     }
 }
 
-private class InterruptionHandler: NSObject {
-    public var source: MicSource?
+// MARK: - ISource
 
-    @objc func handleInterruption(notification: Notification) {
-        guard let interuptionType = notification.userInfo?[AVAudioSessionInterruptionTypeKey] else {
-            Logger.debug("unexpected return")
-            return
-        }
-        let interuptionVal = AVAudioSession.InterruptionType(
-            rawValue: (interuptionType as AnyObject).uintValue )
-
-        if interuptionVal == .began {
-            source?.interruptionBegan()
-        } else {
-            source?.interruptionEnded()
+extension MicSource: ISource {
+    
+    public func setOutput(_ output: IOutput) {
+        self.output = output
+        if let mixer = output as? IAudioMixer {
+            mixer.registerSource(self)
         }
     }
-    
-    @objc func handleRouteChange(notification: Notification) {
-        guard let reasonType = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] else {
-            Logger.debug("unexpected return")
-            return
-        }
-        
-        let reason = AVAudioSession.RouteChangeReason(
-            rawValue: (reasonType as AnyObject).uintValue
-        )
+}
 
-        switch reason {
-        case .newDeviceAvailable, .oldDeviceUnavailable:
-            source?.restart()
-        default:
-            break
+// MARK: - Hashable
+
+extension MicSource: Hashable {
+    
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(
+            ObjectIdentifier(self).hashValue
+        )
+    }
+    
+    public static func == (lhs: MicSource, rhs: MicSource) -> Bool {
+        ObjectIdentifier(lhs) == ObjectIdentifier(rhs)
+    }
+}
+
+// MARK: - Constants
+
+private extension MicSource {
+    
+    enum Constants {
+        static let prefferedNumberOfChannels: UInt32 = 1
+    }
+}
+
+// MARK: - AudioUnitScope+extension
+
+private extension AudioUnitElement {
+    
+    static let inputBus: AudioUnitElement = 1
+    static let outputBus: AudioUnitElement = 0
+}
+
+// MARK: - NotificationsHandler
+
+private extension MicSource {
+    
+    class NotificationHandler: NSObject {
+        
+        // MARK: - Internal vars
+        
+        weak var source: MicSource?
+    
+        // MARK: - Internal methods
+        
+        @objc
+        func handleInterruption(notification: Notification) {
+            guard let interuptionType = notification.userInfo?[AVAudioSessionInterruptionTypeKey] else {
+                Logger.debug("unexpected return")
+                return
+            }
+            
+            let interuptionVal = AVAudioSession.InterruptionType(
+                rawValue: (interuptionType as AnyObject).uintValue
+            )
+            
+            if interuptionVal == .began {
+                source?.interruptionBegan()
+            } else {
+                source?.interruptionEnded()
+            }
+        }
+    
+        @objc
+        func handleRouteChange(notification: Notification) {
+            guard let reasonType = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] else {
+                Logger.debug("unexpected return")
+                return
+            }
+    
+            let reason = AVAudioSession.RouteChangeReason(
+                rawValue: (reasonType as AnyObject).uintValue
+            )
+            
+            var validRouteChange = true
+    
+            switch reason {
+            case .unknown:
+                Logger.debug("Route change: unknown")
+            case .newDeviceAvailable:
+                Logger.debug("Route change: newDeviceAvailable")
+            case .oldDeviceUnavailable:
+                Logger.debug("Route change: oldDeviceUnavailable")
+            case .categoryChange:
+                Logger.debug("Route change: categoryChange")
+            case .override:
+                Logger.debug("Route change: override")
+            case .wakeFromSleep:
+                Logger.debug("Route change: wakeFromSleep")
+            case .noSuitableRouteForCategory:
+                Logger.debug("Route change: noSuitableRouteForCategory")
+            case .routeConfigurationChange:
+                Logger.debug("Route change: routeConfigurationChange")
+                validRouteChange = false
+            default:
+                Logger.debug("Route change: default case")
+            }
+            
+            guard validRouteChange else {
+                return
+            }
+            
+            if let prevRoute = notification.userInfo?[AVAudioSessionRouteChangePreviousRouteKey] {
+                Logger.debug("Previous route: \(prevRoute)")
+            }
         }
     }
 }

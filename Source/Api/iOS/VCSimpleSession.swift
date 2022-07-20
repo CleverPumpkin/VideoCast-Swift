@@ -269,7 +269,7 @@ open class VCSimpleSession {
         videoSplit = nil
         aspectTransform = nil
         positionTransform = nil
-        micSource?.stop()
+        micSource?.dispose()
         micSource = nil
         cameraSource = nil
         pbOutput = nil

@@ -162,7 +162,7 @@ extension VCSimpleSession {
             }
 
             // Add mic source
-            micSource = MicSource(sampleRate: Double(audioSampleRate), preferedChannelCount: audioChannelCount)
+            micSource = try? MicSource(sampleRate: Double(audioSampleRate))
             micSource?.setOutput(audioMixer)
         }
 
