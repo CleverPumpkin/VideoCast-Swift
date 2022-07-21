@@ -10,9 +10,10 @@ import AVFoundation
 import UIKit
 
 open class VCSimpleSession {
+    public internal(set) var cameraSource: CameraSource?
+    
     var pbOutput: PixelBufferOutput?
     var micSource: MicSource?
-    var cameraSource: CameraSource?
     var pixelBufferSource: PixelBufferSource?
     var videoSampleSource: VideoSampleSource?
     var videoSampleSmoother: Smoother?
@@ -203,10 +204,6 @@ open class VCSimpleSession {
             Logger.info("FILTER IS : \(filter)")
             videoMixer.setSourceFilter(WeakRefISource(value: cameraSource), filter: filter)
         }
-    }
-    
-    public var videoSourceSnapshot: CGImage? {
-        cameraSource?.cameraSnapshot
     }
 
     let screencast: Bool

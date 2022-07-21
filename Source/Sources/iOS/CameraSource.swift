@@ -27,8 +27,6 @@ open class CameraSource: ISource {
      * \return `true` is returned if the orientation is locked
      */
     open var orientationLocked: Bool = false
-    
-    var cameraSnapshot: CGImage?
 
     private var matrix: GLKMatrix4 = GLKMatrix4Identity
 
@@ -42,6 +40,10 @@ open class CameraSource: ISource {
     private var fps: Int = 0
     private var torchOn: Bool = false
     private var useInterfaceOrientation: Bool = false
+    private let cameraSnapshotQueue = DispatchQueue(label: "jp.co.cyberagent.VideoCast.cameraSnapshot")
+    private let cameraSnapshotReadyCondition = NSCondition()
+    private var cameraSnapshot: CGImage?
+    private var isWaitingForCameraSnapshot = false
 
     public init() {
 
@@ -412,6 +414,8 @@ open class CameraSource: ISource {
 
     /*! Used by Objective-C Capture Session */
     open func bufferCaptured(pixelBuffer: CVPixelBuffer) {
+        takePixelBufferSnapshotIfNeeeded(pixelBuffer)
+        
         guard let output = output else { return }
 
         let md = VideoBufferMetadata(ts: .init(value: 1, timescale: Int32(fps)))
@@ -484,6 +488,27 @@ open class CameraSource: ISource {
             setTorch(torchOn)
         }
     }
+    
+    open func requestSnapshot(result: @escaping (CGImage?) -> Void) {
+        cameraSnapshotQueue.async { [weak self] in
+            guard let self = self else {
+                result(nil)
+                return
+            }
+            
+            self.cameraSnapshotReadyCondition.lock()
+            self.isWaitingForCameraSnapshot = true
+            self.cameraSnapshotReadyCondition.wait()
+            
+            DispatchQueue.global(qos: .userInteractive).async { [weak self] in
+                result(self?.cameraSnapshot)
+            }
+            
+            self.isWaitingForCameraSnapshot = false
+            
+            self.cameraSnapshotReadyCondition.unlock()
+        }
+    }
 
     /*!
      * Get a camera with a specified position
@@ -498,5 +523,34 @@ open class CameraSource: ISource {
             return device
         }
         return nil
+    }
+    
+    private func takePixelBufferSnapshotIfNeeeded(_ pixelBuffer: CVImageBuffer) {
+        cameraSnapshotReadyCondition.lock()
+        defer { cameraSnapshotReadyCondition.unlock() }
+        
+        guard isWaitingForCameraSnapshot else {
+            return
+        }
+        
+        CVPixelBufferLockBaseAddress(pixelBuffer, CVPixelBufferLockFlags(rawValue: 0))
+        
+        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let height = CVPixelBufferGetHeight(pixelBuffer)
+        
+        let context = CGContext(data: CVPixelBufferGetBaseAddress(pixelBuffer),
+                                width: width,
+                                height: height,
+                                bitsPerComponent: 8,
+                                bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
+                                space: CGColorSpaceCreateDeviceRGB(),
+                                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+        )
+        
+        cameraSnapshot = context?.makeImage()
+        
+        CVPixelBufferUnlockBaseAddress(pixelBuffer, CVPixelBufferLockFlags(rawValue: 0))
+        
+        cameraSnapshotReadyCondition.signal()
     }
 }
