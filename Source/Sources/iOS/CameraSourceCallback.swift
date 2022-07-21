@@ -25,24 +25,6 @@ final class SbCallback: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
             return
         }
         
-        CVPixelBufferLockBaseAddress(pixelBuffer, CVPixelBufferLockFlags(rawValue: 0))
-        
-        let width = CVPixelBufferGetWidth(pixelBuffer)
-        let height = CVPixelBufferGetHeight(pixelBuffer)
-        
-        let context = CGContext(data: CVPixelBufferGetBaseAddress(pixelBuffer),
-                                width: width,
-                                height: height,
-                                bitsPerComponent: 8,
-                                bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer),
-                                space: CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
-        )
-        
-        source?.cameraSnapshot = context?.makeImage()
-        
-        CVPixelBufferUnlockBaseAddress(pixelBuffer, CVPixelBufferLockFlags(rawValue: 0))
-        
         source?.bufferCaptured(pixelBuffer: pixelBuffer)
     }
 
