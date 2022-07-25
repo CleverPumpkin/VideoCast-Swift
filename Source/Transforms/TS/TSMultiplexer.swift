@@ -152,8 +152,8 @@ open class TSMultiplexer: ITransform {
             ts_st.first_pts_check = true
             ts_st.cc = 15
             ts_st.discontinuity = ts.flags.contains(.initial_discontinuity)
-            /* update PCR pid by using the first video stream */
-            if st.mediaType == .video &&
+            /* update PCR pid by using the first audio stream */
+            if st.mediaType == .audio &&
                 service.pcr_pid == 0x1fff {
                 service.pcr_pid = ts_st.pid
                 pcr_st = st
