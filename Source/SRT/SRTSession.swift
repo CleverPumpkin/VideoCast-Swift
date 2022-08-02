@@ -31,6 +31,9 @@ public enum SRTClientState: Int {
 public typealias SRTSessionStateCallback = (_ session: SRTSession, _ state: SRTClientState) -> Void
 
 open class SRTSession: IOutputSession {
+    
+    // MARK: - Private vars
+    
     private let kPollDelay: TimeInterval = 0.1    // seconds - represents the time between polling
 
     private let uri: String
@@ -106,6 +109,7 @@ open class SRTSession: IOutputSession {
     open func stop(_ callback: @escaping StopSessionCallback) {
         statsManager.stop()
         statsManager.removeThroughputCallback()
+        statsManager.removeStatsCallback()
         ending.value = true
         cond.broadcast()
         if started {
@@ -190,6 +194,10 @@ open class SRTSession: IOutputSession {
 
     open func setBandwidthCallback(_ callback: @escaping BandwidthCallback) {
         statsManager.setThroughputCallback(callback)
+    }
+    
+    open func setStatsCallback(_ callback: @escaping SrtStatsCallback) {
+        statsManager.setStatsCallback(callback)
     }
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length

@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name      = 'CPVideoCast'
-  s.version   = '0.2.0-a8'
+  s.version   = '0.2.0-a9'
   s.license   = { :type => "MIT", :file => "LICENSE" }
   s.summary   = 'A framework for broadcasting live video'
   s.homepage  = 'https://github.com/CleverPumpkin/VideoCast-Swift'

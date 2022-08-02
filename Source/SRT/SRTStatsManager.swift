@@ -8,7 +8,10 @@
 
 import Foundation
 
+public typealias SrtStatsCallback = (SrtStats) -> Void
+
 class SrtStatsManager {
+    
     // seconds - represents the time between measurements when increasing or decreasing bitrate
     private let kMeasurementDelay: TimeInterval = 0.1
     // seconds - represents time to wait after a bitrate decrease before attempting to increase again
@@ -32,6 +35,7 @@ class SrtStatsManager {
     private let durQueue: DispatchQueue = .init(label: "jp.co.cyberagent.VideoCast.tcp.adaptation.dur")
 
     private var callback: ThroughputCallback?
+    private var statsCallback: SrtStatsCallback?
 
     private var started: Bool = false
     private var exiting: Atomic<Bool> = .init(false)
@@ -77,9 +81,17 @@ class SrtStatsManager {
     open func setThroughputCallback(_ callback: @escaping ThroughputCallback) {
         self.callback = callback
     }
+    
+    open func setStatsCallback(_ callback: @escaping SrtStatsCallback) {
+        self.statsCallback = callback
+    }
 
     open func removeThroughputCallback() {
         self.callback = nil
+    }
+    
+    open func removeStatsCallback() {
+        self.statsCallback = nil
     }
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
@@ -107,6 +119,8 @@ class SrtStatsManager {
             if samples.count > sampleCount {
                 samples.removeLast()
             }
+            
+            statsCallback?(stats)
 
             guard let current = samples.first else {
                 continue

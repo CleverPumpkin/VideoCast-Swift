@@ -335,6 +335,9 @@ extension VCSimpleSession {
         )
 
         outputSession.setSessionParameters(sessionParameters)
+        outputSession.setStatsCallback { [weak self] stats in
+            self?.delegate.srtStatsChanged?(stats)
+        }
     }
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length

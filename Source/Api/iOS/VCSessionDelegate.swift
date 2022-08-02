@@ -13,6 +13,7 @@ open class VCSessionDelegate: NSObject {
     open var didAddCameraSource: ((_ session: VCSimpleSession) -> Void)?
     open var detectedThroughput: ((_ throughputInBytesPerSecond: Int, _ videorate: Int, _ oBitrate: Int) -> Void)?
     open var bitrateChanged: ((_ videoBitrate: Int, _ audioBitrate: Int) -> Void)?
+    open var srtStatsChanged: ((SrtStats) -> Void)?
 
     public override init() {
         super.init()
