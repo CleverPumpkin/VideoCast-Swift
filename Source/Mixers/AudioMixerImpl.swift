@@ -13,8 +13,8 @@ extension AudioMixer {
     class MixWindow {
         var start = Date()
         let size: Int
-        var next: MixWindow?
-        var prev: MixWindow?
+        weak var next: MixWindow?
+        weak var prev: MixWindow?
         var buffer: [UInt8]
 
         init(size: Int) {
