@@ -169,6 +169,10 @@ open class CameraSource: ISource {
                             if session.canAddOutput(output) {
                                 session.addOutput(output)
                             }
+                            
+                            if #available(iOS 16.0, *), session.isMultitaskingCameraAccessSupported {
+                                session.isMultitaskingCameraAccessEnabled = true
+                            }
 
                             strongSelf.reorientCamera()
                             session.commitConfiguration()
@@ -466,11 +470,11 @@ open class CameraSource: ISource {
                     if av.videoOrientation != .portraitUpsideDown {
                         av.videoOrientation = .portraitUpsideDown
                     }
-                case .landscapeRight:
+                case .landscapeLeft:
                     if av.videoOrientation != .landscapeRight {
                         av.videoOrientation = .landscapeRight
                     }
-                case .landscapeLeft:
+                case .landscapeRight:
                     if av.videoOrientation != .landscapeLeft {
                         av.videoOrientation = .landscapeLeft
                     }
